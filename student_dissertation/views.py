@@ -1,10 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView, DestroyAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Course, YearOfStudy, Student, Document, Consultation, Announcement, Feedback, Milestone, Stage, ProjectGroup, FileRepository
-from .serializers import CourseSerializer, YearOfStudySerializer, StudentSerializer, DocumentSerializer, ConsultationSerializer, AnnouncementSerializer, FeedbackSerializer, MilestoneSerializer, StageSerializer, StudentBasicSerializer, ProjectGroupSerializer, FileRepositorySerializer
+from .models import Course, YearOfStudy, Student, Document, Consultation, Announcement, Feedback, Milestone, Stage, ProjectGroup, FileRepository, Notification
+from .serializers import CourseSerializer, YearOfStudySerializer, StudentSerializer, DocumentSerializer, ConsultationSerializer, AnnouncementSerializer, FeedbackSerializer, MilestoneSerializer, StageSerializer, StudentBasicSerializer, ProjectGroupSerializer, FileRepositorySerializer, NotificationSerializer
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User, Group
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -15,6 +15,7 @@ from rest_framework.authentication import TokenAuthentication
 from collections import defaultdict
 from django.contrib.contenttypes.models import ContentType
 from rest_framework.exceptions import ValidationError
+from rest_framework.decorators import action
 
 
 class CourseListView(ListAPIView):
@@ -567,40 +568,45 @@ class UploadGroupDocumentView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-    def post(self, request):
-        project_title = request.data.get('title')
-        file = request.data.get('file')
-        supervisor = request.data.get('supervisor')
-
+    def post(self, request, *args, **kwargs):
         try:
             student = Student.objects.get(user=request.user)
         except Student.DoesNotExist:
-            return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Student not found.'}, status=404)
 
+        # Get the group if the student is a group leader
         group = ProjectGroup.objects.filter(leader=student).first()
         if not group:
-            return Response({'error': 'Only group leaders can upload group documents.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'Only group leaders can upload group documents.'}, status=403)
 
-        if not project_title or not file:
-            return Response({'error': 'Title and file are required.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Check group has a supervisor
+        if not group.supervisor:
+            return Response({'error': 'This group has no assigned supervisor.'}, status=400)
 
-        content_type = ContentType.objects.get_for_model(ProjectGroup)
+        # Get file and title from the request
+        file = request.data.get('file')
+        title = request.data.get('title')
+        if not file or not title:
+            return Response({'error': 'Both title and file are required.'}, status=400)
 
+        # Prepare data for serializer
+        content_type = ContentType.objects.get_for_model(group)
         data = {
-            'title': project_title,
+            'title': title,
             'file': file,
-            'content_type': content_type.id,
-            'object_id': group.id,
-            'student': student.id,
-            'supervisor': supervisor
+            'content_type': content_type.pk,
+            'object_id': group.pk,
         }
+
+        # Use the group supervisor (automatically fetched, not from frontend)
+        supervisor = group.supervisor
 
         serializer = DocumentSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Group document uploaded successfully'}, status=status.HTTP_201_CREATED)
+            document = serializer.save(supervisor=supervisor)
+            return Response(DocumentSerializer(document).data, status=201)
 
-        return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=400)
 
 
 class SupervisorDocumentListView(APIView):
@@ -1059,3 +1065,22 @@ class AdminRepositoryView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = Notification.objects.filter(recipient=self.request.user).order_by('-created_at')
+        is_read = self.request.query_params.get('is_read')
+        if is_read is not None:
+            queryset = queryset.filter(is_read=(is_read.lower() == 'true'))
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def mark_as_read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        return Response({'status': 'marked as read'}, status=status.HTTP_200_OK)

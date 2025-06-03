@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
-from .models import Student, Document, Consultation, Announcement, Feedback, Milestone, Stage, Course, YearOfStudy, ProjectGroup, FileRepository
+from .models import Student, Document, Consultation, Announcement, Feedback, Milestone, Stage, Course, YearOfStudy, ProjectGroup, FileRepository, Notification
 
 
 class CourseSerializer(serializers.ModelSerializer):
@@ -100,9 +100,20 @@ class DocumentSerializer(serializers.ModelSerializer):
     content_type = serializers.PrimaryKeyRelatedField(required=False, queryset=ContentType.objects.all())
     object_id = serializers.IntegerField(required=False)
 
+    full_name = serializers.SerializerMethodField()
+    content_type_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Document
-        fields = ['id', 'title', 'file', 'uploaded_at', 'supervisor', 'content_type', 'object_id']
+        fields = ['id', 'title', 'file', 'uploaded_at', 'supervisor', 'content_type', 'content_type_name', 'object_id', 'full_name']
+
+    def get_full_name(self, obj):
+        owner = obj.owner
+        if isinstance(owner, Student):
+            return owner.full_name  # or any name field on your Student model
+        elif hasattr(owner, 'name'):  # assuming ProjectGroup has a "name" field
+            return owner.name
+        return "N/A"
 
     def validate_supervisor(self, value):
         if value:
@@ -112,6 +123,9 @@ class DocumentSerializer(serializers.ModelSerializer):
             except User.DoesNotExist:
                 raise serializers.ValidationError("Supervisor not found.")
         return None
+
+    def get_content_type_name(self, obj):
+        return obj.content_type.model if obj.content_type else None
 
 
 class ConsultationSerializer(serializers.ModelSerializer):
@@ -192,3 +206,9 @@ class FileRepositorySerializer(serializers.ModelSerializer):
     def get_file(self, obj):
         request = self.context.get('request')
         return request.build_absolute_uri(obj.file.url)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'

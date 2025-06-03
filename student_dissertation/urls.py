@@ -1,8 +1,15 @@
-from django.urls import path
+from django.urls import path, include
 from rest_framework.authtoken.views import obtain_auth_token
 from .views import GroupedStudentView, AutoCreateGroupsView, ProjectGroupListView, ProjectGroupDeleteView, ProjectGroupDetailView, MyGroupView, CourseListView, YearListView, RegisterView, LoginView, AdminLoginView, StudentListView, RegisterProjectTitleView, RegisterGroupProjectTitleView, StudentsWithoutGroupsView, AssignSupervisorView, AssignGroupSupervisorView, SupervisorListView, AssignedStudentsView, AssignedGroupsView, AssignedSupervisorView, AssignedGroupSupervisorView, UploadStudentDocumentView, UploadGroupDocumentView, SupervisorDocumentListView, BookConsultationView, ManageConsultationView, StudentConsultationView, AnnouncementView, StudentAnnouncementView, AdminAnnouncementView, GiveFeedbackView, ViewFeedbackView, ChangePasswordView, CreateSupervisorView, UserProfileView, StudentProfileView, ProgressTrackingView, CreateStageView, StudentMilestoneView, FileUploadView, AdminRepositoryView
+from rest_framework.routers import DefaultRouter
+from .views import NotificationViewSet
+
+
+router = DefaultRouter()
+router.register(r'notifications', NotificationViewSet, basename='notification')
 
 urlpatterns = [
+    path('', include(router.urls)),
     path('token-login/', obtain_auth_token, name='token-login'),
     path('courses/', CourseListView.as_view(), name='course-list'),
     path('years/', YearListView.as_view(), name='year-list'),

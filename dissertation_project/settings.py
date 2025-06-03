@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    'student_dissertation',
+    'student_dissertation.apps.StudentDissertationConfig',
     'corsheaders',
 ]
 
@@ -149,3 +149,11 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ]
 }
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'            # Or your provider
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'bisakalaben03@gmail.com'
+EMAIL_HOST_PASSWORD = 'mrtq loof zsrg tqeu'  # Use App Password if 2FA enabled
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
