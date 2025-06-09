@@ -25,10 +25,11 @@ class StudentSerializer(serializers.ModelSerializer):
     year_of_study = YearOfStudySerializer(read_only=True)
     course_id = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), source='course', write_only=True)
     year_id = serializers.PrimaryKeyRelatedField(queryset=YearOfStudy.objects.all(), source='year_of_study', write_only=True)
+    sex = serializers.ChoiceField(choices=[('M', 'Male'), ('F', 'Female'), ('O', 'Other')])
 
     class Meta:
         model = Student
-        fields = ['id', 'reg_number', 'full_name', 'password', 'project_title', 'supervisor', 'course', 'year_of_study', 'course_id', 'year_id']
+        fields = ['id', 'reg_number', 'full_name', 'password', 'sex', 'project_title', 'supervisor', 'course', 'year_of_study', 'course_id', 'year_id']
 
     def create(self, validated_data):
         reg_number = validated_data.pop('reg_number')
@@ -36,12 +37,13 @@ class StudentSerializer(serializers.ModelSerializer):
         full_name = validated_data.pop('full_name')
         course = validated_data.pop('course')
         year = validated_data.pop('year_of_study')
+        sex = validated_data.pop('sex')
 
         # Create a User object with reg_number as the username
         user = User.objects.create_user(username=reg_number, password=password)
 
         # Create the Student object linked to the user
-        student = Student.objects.create(user=user, reg_number=reg_number, full_name=full_name, course=course, year_of_study=year,)
+        student = Student.objects.create(user=user, reg_number=reg_number, full_name=full_name, course=course, year_of_study=year, sex=sex)
 
         return student
 

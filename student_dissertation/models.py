@@ -30,8 +30,15 @@ class YearOfStudy(models.Model):
 
 
 class Student(AbstractBaseUser):
+    SEX_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other'),
+    ]
+
     reg_number = models.CharField(max_length=20, unique=True)
     full_name = models.CharField(max_length=100)
+    sex = models.CharField(max_length=1, choices=SEX_CHOICES, null=True, blank=True)
     project_title = models.CharField(max_length=255, blank=True, null=True)  # New field
     supervisor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="students")
     user = models.OneToOneField(User, on_delete=models.CASCADE)

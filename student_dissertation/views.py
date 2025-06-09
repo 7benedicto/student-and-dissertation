@@ -232,22 +232,48 @@ class AutoCreateGroupsView(APIView):
         year_id = request.data.get('year_id')
         group_size = int(request.data.get('group_size', 4))
         base_name = request.data.get('base_name', 'Group')
+        min_females = int(request.data.get('min_females_per_group', 0))
 
         students = Student.objects.filter(course_id=course_id, year_of_study_id=year_id).order_by('reg_number')
 
         if not students.exists():
             return Response({'message': 'No students found for this course and year.'}, status=status.HTTP_404_NOT_FOUND)
 
-        student_list = list(students)
-        total = len(student_list)
-        group_count = 0
+        females = list(students.filter(sex='F'))
+        others = list(students.exclude(sex='F'))
+
+        total_groups = (len(females) + len(others)) // group_size
+        if total_groups == 0:
+            return Response({'message': 'Not enough students to form groups.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(females) < total_groups * min_females:
+            return Response({
+                'message': f'Not enough female students to assign at least {min_females} per group.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        student_list = []
+        for i in range(total_groups):
+            group_members = []
+
+            # Add required females
+            for _ in range(min_females):
+                if females:
+                    group_members.append(females.pop(0))
+
+            # Fill remaining slots
+            while len(group_members) < group_size:
+                if others:
+                    group_members.append(others.pop(0))
+                elif females:
+                    group_members.append(females.pop(0))
+                else:
+                    break
+
+            student_list.append(group_members)
+
         created_groups = []
-
-        for i in range(0, total, group_size):
-            group_count += 1
-            group_students = student_list[i:i+group_size]
-            group_name = f"{base_name} {group_count}"
-
+        for idx, group_students in enumerate(student_list, start=1):
+            group_name = f"{base_name} {idx}"
             group = ProjectGroup.objects.create(
                 name=group_name,
                 course_id=course_id,
