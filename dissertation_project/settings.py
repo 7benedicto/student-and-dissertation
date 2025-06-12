@@ -57,6 +57,9 @@ MIDDLEWARE = [
 ]
 
 # Allow React frontend
+CORS_ALLOWED_ORIGINS = [
+    "https://react-dissertation.vercel.app",  # React frontend domain
+]
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
