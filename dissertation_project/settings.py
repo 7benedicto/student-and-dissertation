@@ -157,3 +157,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'bisakalaben03@gmail.com'
 EMAIL_HOST_PASSWORD = 'mrtq loof zsrg tqeu'  # To use App Password if 2FA enabled
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
